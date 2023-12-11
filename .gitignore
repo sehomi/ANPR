@@ -1,0 +1,15 @@
+# Ignore compiled files
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore log files
+*.log
+
+
+# Ignore system-specific files
+.env
+
+# Ignore training-related files
+dataset/
+video/

@@ -1,0 +1,7 @@
+path: /content/ANPR/dataset/car-plate-detection/
+train: train
+val: val
+
+# Classes
+names:
+ 0: license plate
