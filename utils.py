@@ -2,6 +2,7 @@
 import os
 import shutil
 import xml.etree.ElementTree as ET
+import cv2
 
 def xml_to_yolo(bbox, w, h):
     # xmin, ymin, xmax, ymax
@@ -66,3 +67,22 @@ def convert_dataset(dir, training_percentage=0.8):
                     file.write(f"{line}\n")
 
             training_count += 1
+
+def visualize_plate(image, data):
+
+    x1, y1, x2, y2 = data['box']
+    x1 = int(x1)
+    y1 = int(y1)
+    x2 = int(x2)
+    y2 = int(y2)
+
+    if 'licence_plate' in data:
+        box, text, _ = data['licence_plate']
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 4)
+        # cv2.rectangle(cropped_img, (int(x1_plate), int(y1_plate)), (int(x2_plate), int(y2_plate)), (255, 0, 0), 2)
+        text_x = int(x1)
+        text_y = int(y1) - 10
+        cv2.putText(image, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+    else:
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 4)
