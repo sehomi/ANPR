@@ -1,6 +1,6 @@
 path: /content/ANPR/dataset/car-plate-detection/
 train: train
-val: val
+val: validation
 
 # Classes
 names:
