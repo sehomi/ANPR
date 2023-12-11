@@ -26,7 +26,7 @@ class PlateDetector:
             x1, y1, x2, y2, id, score, label = result
 
             # Check if threshold met and object is a car
-            if score > 0.5 and label==2:
+            if score > 0.5 and label in [2, 3, 5, 7]:
                 
                 car_data = {}
                 car_data['last_seen'] = time.time()
@@ -42,7 +42,7 @@ class PlateDetector:
 
                     plates = self.plate_model(cropped_img)
                     for plate in plates[0].boxes.data.tolist():
-                        if score > 0.6:
+                        if score > 0.3:
                             x1_plate, y1_plate, x2_plate, y2_plate, score_plate, _ = plate
                             lp_crop = cropped_img[int(y1_plate):int(y2_plate), int(x1_plate):int(x2_plate)]
                             lp_crop_gray = cv2.cvtColor(lp_crop, cv2.COLOR_BGR2GRAY)
@@ -52,7 +52,7 @@ class PlateDetector:
                             ocr_res = None
                             for res in ocr_results:
                                 bbox, text, score = res
-                                if score > max_score and score > 0.5:
+                                if score > max_score and score > 0.3:
                                     max_score = score
                                     ocr_res = res
 
