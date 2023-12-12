@@ -30,7 +30,7 @@ while ret:
         # Show image
         frame = cv2.resize(frame, (1280, 720))
         out.write(frame)
-        cv2.imshow("preview", frame)
-        cv2.waitKey(10)
+        # cv2.imshow("preview", frame)
+        # cv2.waitKey(10)
 
     counter += 1
