@@ -22,3 +22,5 @@ Use the following command to run the code:
 ```bash
 python main.py
 ```
+
+After the run is finished, the output video is available in the 'video' folder with the name of 'result.mp4'.
