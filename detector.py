@@ -4,63 +4,91 @@ from ultralytics import YOLO
 import easyocr
 import time
 
-from utils import visualize_plate
+from utils import visualize_plate, license_complies_format, format_license
 
 
 class PlateDetector:
     
     def __init__(self, car_model_path, plate_model_path):
-
+        
+        # Create all models 
         self.car_model = YOLO(car_model_path)
         self.plate_model = YOLO(plate_model_path)
-        self.reader = easyocr.Reader(['en'], gpu=False)
+        self.reader = easyocr.Reader(['en'], gpu=True)
 
+        # A dictionary relating a tracked car id to a licence plate
         self.database = {}
 
 
     def detect(self, frame):
 
-        results = self.car_model.track(frame,persist=True, verbose=True)
+        # Make a copy for visualizations
+        vis_frame = frame.copy()
 
+        # Detect cars
+        results = self.car_model.track(frame,persist=True, verbose=False)
+        
         for result in results[0].boxes.data.tolist():
             x1, y1, x2, y2, id, score, label = result
 
             # Check if threshold met and object is a car
-            if score > 0.5 and label in [2, 3, 5, 7]:
-                
-                car_data = {}
-                car_data['last_seen'] = time.time()
-                car_data['box'] = (x1, y1, x2, y2)
+            if score > 0.3 and label in [2, 3, 5, 7]:
 
-                plate_existing = False
-                if id in self.database:
-                    if 'licence_plate' in self.database[id]:
-                        plate_existing = True
+                # Crop each car to search for licence plate
+                cropped_img = frame[int(y1):int(y2), int(x1):int(x2)]
 
-                if not plate_existing:
-                    cropped_img = frame[int(y1):int(y2), int(x1):int(x2)]
+                # Detect plate on a car
+                plates = self.plate_model(cropped_img, verbose=False)
 
-                    plates = self.plate_model(cropped_img)
-                    for plate in plates[0].boxes.data.tolist():
-                        if score > 0.3:
-                            x1_plate, y1_plate, x2_plate, y2_plate, score_plate, _ = plate
-                            lp_crop = cropped_img[int(y1_plate):int(y2_plate), int(x1_plate):int(x2_plate)]
-                            lp_crop_gray = cv2.cvtColor(lp_crop, cv2.COLOR_BGR2GRAY)
-                            ocr_results = self.reader.readtext(lp_crop_gray)
+                max_score = 0
+                ocr_res = None
+                for plate in plates[0].boxes.data.tolist():
+                    if score > 0.6:
 
-                            max_score = 0
-                            ocr_res = None
-                            for res in ocr_results:
-                                bbox, text, score = res
-                                if score > max_score and score > 0.3:
+                        # Crop the plate on the car
+                        x1_plate, y1_plate, x2_plate, y2_plate, score_plate, _ = plate
+                        lp_crop = cropped_img[int(y1_plate):int(y2_plate), int(x1_plate):int(x2_plate)]
+
+                        # Draw a blue rect on around the plate
+                        cv2.rectangle(vis_frame, (int(x1+x1_plate), int(y1+y1_plate)), (int(x1+x2_plate), int(y1+y2_plate)), (255, 0, 0), 4)
+
+                        # Some preprocessings on the plate image to increase correct ocr
+                        lp_crop_gray = cv2.cvtColor(lp_crop, cv2.COLOR_BGR2GRAY)
+                        lp_crop_gray = cv2.equalizeHist(lp_crop_gray)
+                        
+                        # Detect characters
+                        ocr_results = self.reader.readtext(lp_crop_gray)
+
+                        for detection in ocr_results:
+                            bbox, text, score = detection
+
+                            # All characters on a plate must be uppercase
+                            text = text.upper().replace(' ', '')
+
+                            # Check if the detected string complies with a normal plate. 
+                            # It checks the length and placing of digits and chars.
+                            # If digits and chars are mistakenly placed, some possible
+                            # variations are checked (like 0 and o).
+                            # For each car, the licence with maximum score is saved.
+                            if license_complies_format(text):
+                                formatted_text = format_license(text)
+                                if score > max_score and score > 0.0:
                                     max_score = score
-                                    ocr_res = res
+                                    ocr_res = formatted_text
 
-                            if ocr_res is not None:
-                                car_data['licence_plate'] = ocr_res
-                    
-                self.database[id] = car_data
+                # In case of successful plate recognition, it will be added to a dictionary.
+                # The dictionary is neccessary so that if car's plate is occluded in some frames,
+                # we can preserve its licence based on its tracking id.   
+                if ocr_res is not None:
+                    self.database[id] = ocr_res
+                
+                # Visualizations.
+                if id in self.database:
+                    cv2.rectangle(vis_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 4)
+                    text= self.database[id]
+                    visualize_plate(vis_frame, ((int(x1), int(y1)), (int(x2), int(y2))), text)
+                else:
+                    cv2.rectangle(vis_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 4)
 
-                visualize_plate(frame, self.database[id])
 
-        return frame
+        return vis_frame
