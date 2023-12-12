@@ -21,6 +21,7 @@ pd = PlateDetector('model/yolov8n.pt', 'model/licence_plate.pt')
 
 ret = True
 counter = 0
+length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 while ret:
     # Read a frame from the camera
     ret, frame = cap.read()
@@ -32,5 +33,7 @@ while ret:
         out.write(frame)
         # cv2.imshow("preview", frame)
         # cv2.waitKey(10)
+
+        print(f"Progress: {counter}/{length}")
 
     counter += 1
