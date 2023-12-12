@@ -84,7 +84,8 @@ def visualize_plate(image, car_box, text):
     x_plate = int((car_box[0][0] + car_box[1][0])/2 - w/2)
     y_plate = int(car_box[0][1] - h)
 
-    image[y_plate:y_plate+h, x_plate:x_plate+w] = plate_show
+    if y_plate > 0 and x_plate > 0 and y_plate+h < image.shape[0] and x_plate+w < image.shape[1]:
+        image[y_plate:y_plate+h, x_plate:x_plate+w] = plate_show
 
 
 ############################################################################

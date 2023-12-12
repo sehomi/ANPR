@@ -44,17 +44,26 @@ class PlateDetector:
                 ocr_res = None
                 for plate in plates[0].boxes.data.tolist():
                     if score > 0.6:
-
-                        # Crop the plate on the car
                         x1_plate, y1_plate, x2_plate, y2_plate, score_plate, _ = plate
-                        lp_crop = cropped_img[int(y1_plate):int(y2_plate), int(x1_plate):int(x2_plate)]
 
                         # Draw a blue rect on around the plate
-                        cv2.rectangle(vis_frame, (int(x1+x1_plate), int(y1+y1_plate)), (int(x1+x2_plate), int(y1+y2_plate)), (255, 0, 0), 4)
+                        cv2.rectangle(vis_frame, (int(x1+x1_plate), int(y1+y1_plate)), (int(x1+x2_plate), int(y1+y2_plate)), (255, 0, 0), 6)
+
+                        # To minimize bad readings, only read the plates when vehicle are close to camera.
+                        if y1_plate + y1 < 0.66*frame.shape[0]:
+                            continue
+
+                        # Ignore the plate of the next car in the line by checking approximate location of the plate w.r.t the car.
+                        if y1_plate < (y2 - y1) / 2:
+                            continue
+
+                        # Crop the plate on the car
+                        lp_crop = cropped_img[int(y1_plate):int(y2_plate), int(x1_plate):int(x2_plate)]
 
                         # Some preprocessings on the plate image to increase correct ocr
                         lp_crop_gray = cv2.cvtColor(lp_crop, cv2.COLOR_BGR2GRAY)
-                        lp_crop_gray = cv2.equalizeHist(lp_crop_gray)
+                        # lp_crop_gray = cv2.equalizeHist(lp_crop_gray)
+                        _, lp_crop_gray = cv2.threshold(lp_crop_gray, 64, 255, cv2.THRESH_BINARY_INV)
                         
                         # Detect characters
                         ocr_results = self.reader.readtext(lp_crop_gray)
@@ -72,7 +81,7 @@ class PlateDetector:
                             # For each car, the licence with maximum score is saved.
                             if license_complies_format(text):
                                 formatted_text = format_license(text)
-                                if score > max_score and score > 0.0:
+                                if score > max_score and score > 0.3:
                                     max_score = score
                                     ocr_res = formatted_text
 
